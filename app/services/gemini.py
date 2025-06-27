@@ -46,6 +46,34 @@ def analyze_image(img_base64: str):
     )
     return response.text
 
+def analyze_images(img_base64_list):
+    prompt = (
+        "Identify this product with maximum specific detail. "
+        "Provide brand, make, model, full product name, and key technical specifications. "
+        "At the end, clearly list typical search terms, inside double quotes if possible, "
+        "or as bullet points if that's clearer."
+    )
+    contents = [{
+        "parts": [
+            {"text": prompt},
+            *[
+                {
+                    "inline_data": {
+                        "mime_type": "image/jpeg",
+                        "data": img_base64
+                    }
+                }
+                for img_base64 in img_base64_list
+            ]
+        ]
+    }]
+    response = client.models.generate_content(
+        model=model_id,
+        contents=contents,
+        config=config
+    )
+    return response.text
+
 def extract_search_terms(product_description):
     match = re.search(r'(search terms.*?)[:：]\s*(.*?)$', product_description, re.IGNORECASE | re.DOTALL)
     if not match:
@@ -61,39 +89,77 @@ def find_shopping_links(product_description: str):
     search_terms = extract_search_terms(product_description)
     if not search_terms:
         search_terms = [product_description]
+    # Limit to top 3 search terms
+    search_terms = search_terms[:3]
 
-    improved_prompt = f"""
-Use ONLY these exact search terms to find direct product pages:
-{chr(10).join(['- ' + term for term in search_terms])}
+    all_links = set()
+    for term in search_terms:
+        prompt = f"""
+Use Google Search to find direct product pages for this search term:
+- {term}
 
 ❌ Do NOT include:
-- Reviews, blogs, forums, social media
-- Comparison or aggregator sites without a direct “Buy Now”
-- Retailer homepages or generic categories
+- Retailer homepages or category pages
 - Search result pages
+- PDF files, blogs, reviews, forums, or social media
+- Aggregator or comparison sites.
 
-✅ Only provide direct product pages with an “Add to Cart” or “Buy Now”.
+✅ Only provide direct product pages where the user can purchase the exact item.
 
 Output format: [Product Title](URL)
 
-If you can't find direct product pages, return “No direct product pages found.”
+If you cannot find any direct product pages, respond with: No direct product pages found.
 """
+        response = client.models.generate_content(
+            model=model_id,
+            contents=prompt,
+            config=config
+        )
+        candidate = response.candidates[0]
+        if (
+            hasattr(candidate, "grounding_metadata")
+            and candidate.grounding_metadata
+            and hasattr(candidate.grounding_metadata, "grounding_chunks")
+            and candidate.grounding_metadata.grounding_chunks
+        ):
+            for chunk in candidate.grounding_metadata.grounding_chunks:
+                if hasattr(chunk, "web"):
+                    all_links.add(chunk.web.uri)
+    return list(all_links)
 
-    response = client.models.generate_content(
-        model=model_id,
-        contents=improved_prompt,
-        config=config
-    )
-
+def extract_shopping_links_html(response):
     links = []
-    candidate = response.candidates[0]
-    if (
-        hasattr(candidate, "grounding_metadata")
-        and candidate.grounding_metadata
-        and hasattr(candidate.grounding_metadata, "grounding_chunks")
-        and candidate.grounding_metadata.grounding_chunks
-    ):
-        for chunk in candidate.grounding_metadata.grounding_chunks:
-            if hasattr(chunk, "web"):
+    # Try grounding metadata
+    if hasattr(response.candidates[0], 'grounding_metadata') and response.candidates[0].grounding_metadata:
+        for chunk in response.candidates[0].grounding_metadata.grounding_chunks:
+            if hasattr(chunk, 'web'):
+                links.append((chunk.web.title, chunk.web.uri))
+    # Fallback
+    if not links:
+        fallback_links = re.findall(r'\[(.*?)\]\((https?://[^\)]+)\)', response.text)
+        links.extend(fallback_links)
+
+    if not links:
+        return "<p>No direct shopping links available.</p>"
+
+    html = "<h3>Direct Shopping Links</h3><ul>"
+    for title, link in links:
+        html += f"<li><a href='{link}' target='_blank'>{title}</a></li>"
+    html += "</ul>"
+    return html
+
+def extract_shopping_links_urls(response):
+    """
+    Extracts only the URLs (for Firecrawl) from the Gemini response.
+    """
+    links = []
+    # Try grounding metadata
+    if hasattr(response.candidates[0], 'grounding_metadata') and response.candidates[0].grounding_metadata:
+        for chunk in response.candidates[0].grounding_metadata.grounding_chunks:
+            if hasattr(chunk, 'web'):
                 links.append(chunk.web.uri)
+    # Fallback
+    if not links:
+        fallback_links = re.findall(r'\[(.*?)\]\((https?://[^\)]+)\)', response.text)
+        links.extend([url for _, url in fallback_links])
     return links
