@@ -119,27 +119,6 @@ Output format: URL
                     all_links.add(chunk.web.uri)
     return list(all_links)
 
-#def extract_shopping_links_html(response):
-    links = []
-    # Try grounding metadata
-    if hasattr(response.candidates[0], 'grounding_metadata') and response.candidates[0].grounding_metadata:
-        for chunk in response.candidates[0].grounding_metadata.grounding_chunks:
-            if hasattr(chunk, 'web'):
-                links.append((chunk.web.title, chunk.web.uri))
-    # Fallback
-    if not links:
-        fallback_links = re.findall(r'\[(.*?)\]\((https?://[^\)]+)\)', response.text)
-        links.extend(fallback_links)
-
-    if not links:
-        return "<p>No direct shopping links available.</p>"
-
-    html = "<h3>Direct Shopping Links</h3><ul>"
-    for title, link in links:
-        html += f"<li><a href='{link}' target='_blank'>{title}</a></li>"
-    html += "</ul>"
-    return html#
-
 def extract_shopping_links_urls(response):
     """
     Extracts only the URLs (for Firecrawl) from the Gemini response.
