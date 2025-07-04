@@ -15,8 +15,13 @@ def call_firecrawl_extractor(links):
     payload = {
         "urls": limited_links,
         "prompt": (
-            "You're extracting product data from a list of e-commerce product pages..."
+            "Extract the price and product URL from the specified product page. "
+            "Only get the main price even if the product is out of stock, and the direct product page URL; one set per URL. "
+            "Include website name."
         ),
+        "scrapeOptions": {
+        "maxAge": 604800000
+      },
         "schema": {
             "type": "object",
             "properties": {
@@ -38,24 +43,35 @@ def call_firecrawl_extractor(links):
     }
 
     response = requests.post(url, headers=headers, json=payload)
-    firecrawl_result = response.json()
+    try:
+        firecrawl_result = response.json()
+    except Exception as e:
+        print(f"[Firecrawl] Error decoding JSON: {e}")
+        print(f"[Firecrawl] Raw response: {response.text}")
+        return {"success": False, "error": "Invalid JSON from Firecrawl"}
 
     firecrawl_output = None
     if firecrawl_result.get("success") and firecrawl_result.get("id"):
         firecrawl_id = firecrawl_result["id"]
         print(f"[Firecrawl] Waiting 20 seconds before fetching result for id: {firecrawl_id}")
-        time.sleep(20)
+        time.sleep(10)
         get_url = f"https://api.firecrawl.dev/v1/extract/{firecrawl_id}"
         while True:
             get_response = requests.get(get_url, headers=headers)
-            firecrawl_output = get_response.json()
+            try:
+                firecrawl_output = get_response.json()
+            except Exception as e:
+                print(f"[Firecrawl] Error decoding JSON: {e}")
+                print(f"[Firecrawl] Raw response: {get_response.text}")
+                firecrawl_output = {"success": False, "error": "Invalid JSON from Firecrawl"}
+                break
             status = firecrawl_output.get("status") or firecrawl_output.get("data", {}).get("status")
             print(f"[Firecrawl] Status: {status}")
             if status == "completed":
                 break
             elif status == "processing":
                 print("[Firecrawl] Still processing, waiting 5 seconds...")
-                time.sleep(5)
+                time.sleep(3)
             else:
                 break
 
@@ -63,4 +79,3 @@ def call_firecrawl_extractor(links):
     if firecrawl_output and firecrawl_output.get("success"):
         return firecrawl_output
     return None
-

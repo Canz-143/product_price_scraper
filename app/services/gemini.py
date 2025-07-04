@@ -6,7 +6,7 @@ from google.genai.types import GenerateContentConfig
 from app.config import GOOGLE_API_KEY
 
 client = genai.Client()
-model_id = "gemini-2.5-flash-preview-05-20"
+model_id = "gemini-2.5-flash"
 search_tool = Tool(google_search=GoogleSearch())
 
 config = GenerateContentConfig(
@@ -98,17 +98,9 @@ def find_shopping_links(product_description: str):
 Use Google Search to find direct product pages for this search term:
 - {term}
 
-❌ Do NOT include:
-- Retailer homepages or category pages
-- Search result pages
-- PDF files, blogs, reviews, forums, or social media
-- Aggregator or comparison sites.
+Only provide direct product pages where the user can purchase the exact item.
 
-✅ Only provide direct product pages where the user can purchase the exact item.
-
-Output format: [Product Title](URL)
-
-If you cannot find any direct product pages, respond with: No direct product pages found.
+Output format: URL
 """
         response = client.models.generate_content(
             model=model_id,
@@ -127,7 +119,7 @@ If you cannot find any direct product pages, respond with: No direct product pag
                     all_links.add(chunk.web.uri)
     return list(all_links)
 
-def extract_shopping_links_html(response):
+#def extract_shopping_links_html(response):
     links = []
     # Try grounding metadata
     if hasattr(response.candidates[0], 'grounding_metadata') and response.candidates[0].grounding_metadata:
@@ -146,7 +138,7 @@ def extract_shopping_links_html(response):
     for title, link in links:
         html += f"<li><a href='{link}' target='_blank'>{title}</a></li>"
     html += "</ul>"
-    return html
+    return html#
 
 def extract_shopping_links_urls(response):
     """
