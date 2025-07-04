@@ -5,8 +5,8 @@ from app.config import FIRECRAWL_API_KEY
 
 def call_firecrawl_extractor(links):
     # Only send the first 10 links
-    limited_links = links[:10]
-    print(f"[Firecrawl] Sending URLs (max 10): {limited_links}")  # Log the URLs being sent
+    limited_links = links[:6]
+    print(f"[Firecrawl] Sending URLs (max 6): {limited_links}")  # Log the URLs being sent
     url = "https://api.firecrawl.dev/v1/extract"
     headers = {
         "Content-Type": "application/json",
@@ -53,8 +53,8 @@ def call_firecrawl_extractor(links):
     firecrawl_output = None
     if firecrawl_result.get("success") and firecrawl_result.get("id"):
         firecrawl_id = firecrawl_result["id"]
-        print(f"[Firecrawl] Waiting 20 seconds before fetching result for id: {firecrawl_id}")
-        time.sleep(10)
+        print(f"[Firecrawl] Waiting 5 seconds before fetching result for id: {firecrawl_id}")
+        time.sleep(5)
         get_url = f"https://api.firecrawl.dev/v1/extract/{firecrawl_id}"
         while True:
             get_response = requests.get(get_url, headers=headers)
