@@ -15,13 +15,12 @@ async def analyze_product_images(images: List[UploadFile] = File(...)):
         img_base64_list.append(img_base64)
     product_desc = analyze_images(img_base64_list)
     shopping_links = find_shopping_links(product_desc)
-    firecrawl_output = call_firecrawl_extractor(shopping_links)
+    firecrawl_output = await call_firecrawl_extractor(shopping_links)
     return firecrawl_output
 
 @router.post("/analyze/search")
 async def analyze_product_search(search_terms: List[str] = Form(...)):
     product_desc = " ".join(search_terms)
     shopping_links = find_shopping_links(product_desc)
-    firecrawl_output = call_firecrawl_extractor(shopping_links)
+    firecrawl_output = await call_firecrawl_extractor(shopping_links)
     return firecrawl_output
-
