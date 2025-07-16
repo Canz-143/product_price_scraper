@@ -6,7 +6,7 @@ from google.genai.types import GenerateContentConfig
 from app.config import GOOGLE_API_KEY
 
 client = genai.Client()
-model_id = "gemini-2.5-flash"
+model_id = "gemini-2.0-flash"
 search_tool = Tool(google_search=GoogleSearch())
 
 config = GenerateContentConfig(
@@ -99,6 +99,10 @@ Use Google Search to find direct product pages for this search term:
 - {term}
 
 Only provide direct product pages where the user can purchase the exact item.
+
+Do not include:
+- Product manuals
+- Search result page
 
 Output format: URL
 """
