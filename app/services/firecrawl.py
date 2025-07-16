@@ -57,7 +57,7 @@ async def call_firecrawl_extractor(links, request_id=None):
 
         # Log the POST request payload and URL
         #print(f"[Firecrawl] POST URL: {url}")
-        #print(f"[Firecrawl] POST Payload: {json.dumps(payload, indent=2)}")
+        print(f"[Firecrawl] POST Payload: {json.dumps(payload, indent=2)}")
         #print(f"[Firecrawl] POST Headers: {headers}")
 
         # Set a longer timeout for the HTTPX client
