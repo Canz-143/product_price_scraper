@@ -100,9 +100,7 @@ Use Google Search to find direct product pages for this search term:
 
 Only provide direct product pages where the user can purchase the exact item.
 
-Do not include:
-- Product manuals
-- Search result page
+Do not include search result page.
 
 Output format: URL
 """
