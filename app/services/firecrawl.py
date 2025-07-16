@@ -30,7 +30,7 @@ async def call_firecrawl_extractor(links, request_id=None):
             "prompt": (
                 "Extract the price and product URL from the specified product page. "
                 "Only get the main price even if the product is out of stock, and the direct product page URL; one set per URL. "
-                "Include website name."
+                "Include website name. If it's a search result page, only extract one product from it."
             ),
             "scrapeOptions": {
                 "maxAge": 604800000
