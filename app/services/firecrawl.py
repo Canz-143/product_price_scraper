@@ -18,7 +18,7 @@ async def call_firecrawl_extractor(links, request_id=None):
                 resolved_links.append(resolved)
             else:
                 print(f"[Firecrawl] Skipping unresolved Vertex URL: {link}")
-        print(f"[Firecrawl] Resolved URLs: {resolved_links}")
+        #print(f"[Firecrawl] Resolved URLs: {resolved_links}")
 
         url = "https://api.firecrawl.dev/v1/extract"
         headers = {
@@ -56,9 +56,9 @@ async def call_firecrawl_extractor(links, request_id=None):
         }
 
         # Log the POST request payload and URL
-        print(f"[Firecrawl] POST URL: {url}")
-        print(f"[Firecrawl] POST Payload: {json.dumps(payload, indent=2)}")
-        print(f"[Firecrawl] POST Headers: {headers}")
+        #print(f"[Firecrawl] POST URL: {url}")
+        #print(f"[Firecrawl] POST Payload: {json.dumps(payload, indent=2)}")
+        #print(f"[Firecrawl] POST Headers: {headers}")
 
         # Set a longer timeout for the HTTPX client
         async with httpx.AsyncClient(timeout=60.0) as client:
