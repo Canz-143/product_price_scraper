@@ -7,7 +7,7 @@ firecrawl_semaphore = asyncio.Semaphore(2)  # Only 1 concurrent Firecrawl reques
 
 async def call_firecrawl_extractor(links, request_id=None):
     #print("DEBUG: links type:", type(links))
-    3print("DEBUG: links value:", links)
+    #print("DEBUG: links value:", links)
     async with firecrawl_semaphore:
         # Only send the first 10 links
         limited_links = links[:5]
