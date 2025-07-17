@@ -6,6 +6,8 @@ from app.config import FIRECRAWL_API_KEY
 firecrawl_semaphore = asyncio.Semaphore(2)  # Only 1 concurrent Firecrawl request allowed
 
 async def call_firecrawl_extractor(links, request_id=None):
+    print("DEBUG: links type:", type(links))
+    print("DEBUG: links value:", links)
     async with firecrawl_semaphore:
         # Only send the first 10 links
         limited_links = links[:5]
@@ -18,6 +20,8 @@ async def call_firecrawl_extractor(links, request_id=None):
                 resolved_links.append(resolved)
             else:
                 print(f"[Firecrawl] Skipping unresolved Vertex URL: {link}")
+        print("DEBUG: resolved_links type:", type(resolved_links))
+        print("DEBUG: resolved_links value:", resolved_links)
         print(f"[Firecrawl] Resolved URLs: {resolved_links}")
 
         url = "https://api.firecrawl.dev/v1/extract"
