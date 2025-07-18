@@ -35,7 +35,6 @@ async def call_firecrawl_extractor(links, request_id=None):
             "prompt": (
                   "Extract the main product price and the direct product page URL from each input link."
                   "Always include the website name in the output."
-                  "If the product is out of stock, still extract the main listed price."
                   "Return only one result per URL."
                   "If the URL points to a search results or category page, extract information only from the first listed product."
             ),
