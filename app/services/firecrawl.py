@@ -3,25 +3,26 @@ import httpx
 import json
 from app.config import FIRECRAWL_API_KEY
 
-firecrawl_semaphore = asyncio.Semaphore(5)  # Only 1 concurrent Firecrawl request allowed
+firecrawl_semaphore = asyncio.Semaphore(5)  # Limit concurrent Firecrawl requests
 
 async def call_firecrawl_extractor(links, request_id=None):
-    #print("DEBUG: links type:", type(links))
-    #print("DEBUG: links value:", links)
+    print("DEBUG: links type:", type(links))
+    print("DEBUG: links value:", links)
     async with firecrawl_semaphore:
-        # Only send the first 10 links
-        limited_links = links[:8]
-        # Resolve each link asynchronously (sequentially)
+        # Limit to the first 10 links
+        limited_links = links[:10]
+
+        # Resolve all links concurrently (parallel)
+        resolved_links_raw = await asyncio.gather(*(resolve_vertex_url(link) for link in limited_links))
+        
+        # Filter out unresolved links or duplicates
         resolved_links = []
-        for link in limited_links:
-            resolved = await resolve_vertex_url(link)
-            # Only include successfully resolved URLs (skip if error or unresolved)
-            if resolved and resolved != link:
+        for original, resolved in zip(limited_links, resolved_links_raw):
+            if resolved and resolved != original:
                 resolved_links.append(resolved)
             else:
-                print(f"[Firecrawl] Skipping unresolved Vertex URL: {link}")
-        #print("DEBUG: resolved_links type:", type(resolved_links))
-        #print("DEBUG: resolved_links value:", resolved_links)
+                print(f"[Firecrawl] Skipping unresolved Vertex URL: {original}")
+        
         print(f"[Firecrawl] Resolved URLs: {resolved_links}")
 
         url = "https://api.firecrawl.dev/v1/extract"
@@ -60,12 +61,10 @@ async def call_firecrawl_extractor(links, request_id=None):
             }
         }
 
-        # Log the POST request payload and URL
         print(f"[Firecrawl] POST URL: {url}")
         print(f"[Firecrawl] POST Payload: {json.dumps(payload, indent=2)}")
         print(f"[Firecrawl] POST Headers: {headers}")
 
-        # Set a longer timeout for the HTTPX client
         async with httpx.AsyncClient(timeout=60.0) as client:
             response = await client.post(url, headers=headers, json=payload)
             try:
@@ -78,7 +77,7 @@ async def call_firecrawl_extractor(links, request_id=None):
             firecrawl_output = None
             if firecrawl_result.get("success") and firecrawl_result.get("id"):
                 firecrawl_id = firecrawl_result["id"]
-                print(f"[Firecrawl] Waiting 20 seconds before fetching result for id: {firecrawl_id}")
+                print(f"[Firecrawl] Waiting 5 seconds before fetching result for id: {firecrawl_id}")
                 await asyncio.sleep(5)
                 get_url = f"https://api.firecrawl.dev/v1/extract/{firecrawl_id}"
                 while True:
@@ -100,7 +99,6 @@ async def call_firecrawl_extractor(links, request_id=None):
                     else:
                         break
 
-        # ✅ Only return the relevant clean portion
         if firecrawl_output and firecrawl_output.get("success"):
             return firecrawl_output
     return None
@@ -111,7 +109,6 @@ async def resolve_vertex_url(url):
         try:
             resp = await client.head(url, headers=headers)
             location = resp.headers.get("Location")
-            # Optionally follow one more redirect
             if resp.is_redirect and location:
                 resp2 = await client.head(location, headers=headers)
                 next_location = resp2.headers.get("Location")
