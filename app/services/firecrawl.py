@@ -3,14 +3,14 @@ import httpx
 import json
 from app.config import FIRECRAWL_API_KEY
 
-firecrawl_semaphore = asyncio.Semaphore(2)  # Only 1 concurrent Firecrawl request allowed
+firecrawl_semaphore = asyncio.Semaphore(5)  # Only 1 concurrent Firecrawl request allowed
 
 async def call_firecrawl_extractor(links, request_id=None):
     #print("DEBUG: links type:", type(links))
     #print("DEBUG: links value:", links)
     async with firecrawl_semaphore:
         # Only send the first 10 links
-        limited_links = links[:5]
+        limited_links = links[:8]
         # Resolve each link asynchronously (sequentially)
         resolved_links = []
         for link in limited_links:
