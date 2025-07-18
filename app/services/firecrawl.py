@@ -10,7 +10,7 @@ async def call_firecrawl_extractor(links, request_id=None):
     print("DEBUG: links value:", links)
     async with firecrawl_semaphore:
         # Limit to the first 10 links
-        limited_links = links[:10]
+        limited_links = links[:5]
 
         # Resolve all links concurrently (parallel)
         resolved_links_raw = await asyncio.gather(*(resolve_vertex_url(link) for link in limited_links))
