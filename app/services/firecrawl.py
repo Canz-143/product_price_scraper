@@ -21,7 +21,7 @@ async def call_firecrawl_extractor(links, request_id=None):
             if resolved and resolved != original:
                 resolved_links.append(resolved)
             else:
-                #print(f"[Firecrawl] Skipping unresolved Vertex URL: {original}")
+                print(f"[Firecrawl] Skipping unresolved Vertex URL: {original}")
         
         print(f"[Firecrawl] Resolved URLs: {resolved_links}")
 
