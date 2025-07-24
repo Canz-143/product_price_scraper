@@ -98,7 +98,7 @@ def find_shopping_links(product_description: str):
 Use Google Search to find direct product pages for this search term:
 - {term}
 
-Only provide direct product pages where the user can purchase the exact item, no search result url.
+Only provide direct product pages where the user can purchase the exact item, absolutely no search result and collections url.
 
 Output format: URL
 """
