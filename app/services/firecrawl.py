@@ -6,8 +6,8 @@ from app.config import FIRECRAWL_API_KEY
 firecrawl_semaphore = asyncio.Semaphore(5)  # Limit concurrent Firecrawl requests
 
 async def call_firecrawl_extractor(links, request_id=None):
-    print("DEBUG: links type:", type(links))
-    print("DEBUG: links value:", links)
+    #print("DEBUG: links type:", type(links))
+    #print("DEBUG: links value:", links)
     async with firecrawl_semaphore:
         # Limit to the first 10 links
         limited_links = links[:5]
@@ -21,7 +21,7 @@ async def call_firecrawl_extractor(links, request_id=None):
             if resolved and resolved != original:
                 resolved_links.append(resolved)
             else:
-                print(f"[Firecrawl] Skipping unresolved Vertex URL: {original}")
+                #print(f"[Firecrawl] Skipping unresolved Vertex URL: {original}")
         
         print(f"[Firecrawl] Resolved URLs: {resolved_links}")
 
@@ -62,9 +62,9 @@ async def call_firecrawl_extractor(links, request_id=None):
             }
         }
 
-        print(f"[Firecrawl] POST URL: {url}")
-        print(f"[Firecrawl] POST Payload: {json.dumps(payload, indent=2)}")
-        print(f"[Firecrawl] POST Headers: {headers}")
+        #print(f"[Firecrawl] POST URL: {url}")
+        #print(f"[Firecrawl] POST Payload: {json.dumps(payload, indent=2)}")
+        #print(f"[Firecrawl] POST Headers: {headers}")
 
         async with httpx.AsyncClient(timeout=60.0) as client:
             response = await client.post(url, headers=headers, json=payload)
