@@ -95,10 +95,8 @@ def find_shopping_links(product_description: str):
     all_links = set()
     for term in search_terms:
         prompt = f"""
-Use Google Search to find direct product pages for this search term:
-- {term}
-
-Only provide direct product pages where the user can purchase the exact item. Do not include product search results and product collections pages.
+Find direct product purchase pages for: {term}
+Use Google Search to locate specific product pages where customers can directly buy this exact item. Include only direct product pages with purchase options, official retailer/manufacturer pages, and e-commerce sites selling the specific product. Exclude product manuals or documentation, search results or category pages, review sites without purchase links, and out-of-stock listings. Provide clean URLs only, one per line.
 
 Output format: URL
 """
