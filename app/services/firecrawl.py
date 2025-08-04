@@ -247,34 +247,52 @@ async def call_firecrawl_extractor(links, request_id=None):
                 print(f"[Firecrawl] Raw response: {response.text}")
                 return {"success": False, "error": "Invalid JSON from Firecrawl"}
 
-            firecrawl_output = None
-            if firecrawl_result.get("success") and firecrawl_result.get("id"):
-                firecrawl_id = firecrawl_result["id"]
-                print(f"[Firecrawl] Waiting 5 seconds before fetching result for id: {firecrawl_id}")
-                await asyncio.sleep(5)
-                get_url = f"https://api.firecrawl.dev/v1/extract/{firecrawl_id}"
-                while True:
-                    get_response = await client.get(get_url, headers=headers)
-                    try:
-                        firecrawl_output = get_response.json()
-                    except Exception as e:
-                        print(f"[Firecrawl] Error decoding JSON: {e}")
-                        print(f"[Firecrawl] Raw response: {get_response.text}")
-                        firecrawl_output = {"success": False, "error": "Invalid JSON from Firecrawl"}
-                        break
-                    status = firecrawl_output.get("status") or firecrawl_output.get("data", {}).get("status")
-                    print(f"[Firecrawl] Request {request_id} status: {status}")
-                    if status == "completed":
-                        break
-                    elif status == "processing":
-                        print(f"[Firecrawl] Request {request_id} still processing...")
-                        await asyncio.sleep(1)
-                    else:
-                        break
+            # Handle both sync and async responses
+            if firecrawl_result.get("success"):
+                
+                # Check if it's an async response (has job ID)
+                if firecrawl_result.get("id"):
+                    print(f"[Firecrawl] Got async response, polling for job ID: {firecrawl_result['id']}")
+                    firecrawl_id = firecrawl_result["id"]
+                    print(f"[Firecrawl] Waiting 5 seconds before fetching result for id: {firecrawl_id}")
+                    await asyncio.sleep(5)
+                    
+                    get_url = f"https://api.firecrawl.dev/v1/extract/{firecrawl_id}"
+                    while True:
+                        get_response = await client.get(get_url, headers=headers)
+                        try:
+                            firecrawl_output = get_response.json()
+                        except Exception as e:
+                            print(f"[Firecrawl] Error decoding JSON: {e}")
+                            print(f"[Firecrawl] Raw response: {get_response.text}")
+                            return {"success": False, "error": "Invalid JSON from Firecrawl"}
+                        
+                        status = firecrawl_output.get("status") or firecrawl_output.get("data", {}).get("status")
+                        print(f"[Firecrawl] Request {request_id} status: {status}")
+                        if status == "completed":
+                            break
+                        elif status == "processing":
+                            print(f"[Firecrawl] Request {request_id} still processing...")
+                            await asyncio.sleep(1)
+                        else:
+                            break
+                    
+                    return firecrawl_output
+                
+                # Check if it's a sync response (has data directly)
+                elif firecrawl_result.get("data") or firecrawl_result.get("status") == "completed":
+                    print(f"[Firecrawl] Got synchronous response - data ready immediately")
+                    return firecrawl_result
+                
+                else:
+                    print(f"[Firecrawl] Unexpected success response structure: {firecrawl_result}")
+                    return {"success": False, "error": "Unexpected response structure from Firecrawl"}
+            
+            else:
+                print(f"[Firecrawl] API returned failure: {firecrawl_result}")
+                return firecrawl_result
 
-        if firecrawl_output and firecrawl_output.get("success"):
-            return firecrawl_output
-    return None
+    return {"success": False, "error": "Unknown error in Firecrawl extraction"}
 
 async def resolve_vertex_url(url):
     headers = {"User-Agent": "Mozilla/5.0"}
