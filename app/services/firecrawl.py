@@ -7,6 +7,33 @@ from app.config import FIRECRAWL_API_KEY
 
 firecrawl_semaphore = asyncio.Semaphore(5)  # Limit concurrent Firecrawl requests
 
+def is_valid_url(url):
+    """
+    Check if URL is valid and has proper format for Firecrawl
+    Returns True if valid, False if should be filtered out
+    """
+    if not url:
+        return False
+    
+    # Must start with http:// or https://
+    if not url.startswith(('http://', 'https://')):
+        return False
+    
+    try:
+        parsed = urlparse(url)
+        # Must have a valid domain
+        if not parsed.netloc:
+            return False
+        # Must have a proper TLD (at least one dot in domain)
+        if '.' not in parsed.netloc:
+            return False
+        # Filter out blocked/tracking URLs
+        if '/blocked?' in url or 'blocked' in parsed.path:
+            return False
+        return True
+    except Exception:
+        return False
+
 def is_search_or_collection_page(url):
     """
     Determine if a URL is a search result page or collection page
@@ -177,6 +204,12 @@ async def call_firecrawl_extractor(links, request_id=None):
                 print(f"[Firecrawl] Skipping unresolved Vertex URL: {original}")
                 continue
             
+            # First check: Valid URL format
+            if not is_valid_url(resolved):
+                filtered_count += 1
+                print(f"[Firecrawl] Filtered out invalid URL: {resolved}")
+                continue
+            
             # Check if it's a search or collection page
             if is_search_or_collection_page(resolved):
                 filtered_count += 1
@@ -212,8 +245,6 @@ async def call_firecrawl_extractor(links, request_id=None):
             "urls": resolved_links,
             "prompt": (
                 "For each URL, retrieve the product name (specific item, not category), main primary price, direct product page URL (clean link), and website/retailer name. If a page shows multiple products, select only ONE specific item. Use the main displayed price."
-                #"Extract information from the specific product shown on this page. "
-                #"Use the main displayed price and ensure the URL is the direct product page link."
             ),
             "scrapeOptions": {
                 "maxAge": 604800000
