@@ -244,7 +244,7 @@ async def call_firecrawl_extractor(links, request_id=None):
         payload = {
             "urls": resolved_links,
             "prompt": (
-                "For each URL, retrieve the product name (specific item, not category), main primary price, direct product page URL (clean link), and website/retailer name. If a page shows multiple products, select only ONE specific item. Use the main displayed price."
+                "Extract the product price and the direct product page URL from each input link, and include the website name."
             ),
             "scrapeOptions": {
                 "maxAge": 604800000
