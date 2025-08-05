@@ -1,5 +1,6 @@
 import os
 import re
+import asyncio
 from google import genai
 from google.genai.types import Tool, GoogleSearch
 from google.genai.types import GenerateContentConfig
@@ -8,6 +9,9 @@ from app.config import GOOGLE_API_KEY
 client = genai.Client()
 model_id = "gemini-2.5-flash"
 search_tool = Tool(google_search=GoogleSearch())
+
+# Add semaphore for Gemini API rate limiting
+gemini_semaphore = asyncio.Semaphore(10)  # Limit to 3 concurrent Gemini requests
 
 config = GenerateContentConfig(
     system_instruction=(
@@ -21,58 +25,81 @@ config = GenerateContentConfig(
     temperature=0.2,
 )
 
+async def analyze_image_async(img_base64: str):
+    """Async version with rate limiting"""
+    async with gemini_semaphore:
+        prompt = (
+            "Identify this product with maximum specific detail. "
+            "Provide brand, make, model, full product name, and key technical specifications. "
+            "At the end, clearly list typical search terms, inside double quotes if possible, "
+            "or as bullet points if that's clearer."
+        )
+        
+        # Add small delay to avoid burst limits
+        await asyncio.sleep(0.1)
+        
+        response = client.models.generate_content(
+            model=model_id,
+            contents=[
+                {
+                    "parts": [
+                        {"text": prompt},
+                        {
+                            "inline_data": {
+                                "mime_type": "image/jpeg",
+                                "data": img_base64
+                            }
+                        }
+                    ]
+                }
+            ]
+        )
+        return response.text
+
+# Keep sync version for backward compatibility
 def analyze_image(img_base64: str):
-    prompt = (
-        "Identify this product with maximum specific detail. "
-        "Provide brand, make, model, full product name, and key technical specifications. "
-        "At the end, clearly list typical search terms, inside double quotes if possible, "
-        "or as bullet points if that's clearer."
-    )
-    response = client.models.generate_content(
-        model=model_id,
-        contents=[
-            {
-                "parts": [
-                    {"text": prompt},
+    """Synchronous wrapper - consider migrating to async version"""
+    loop = asyncio.get_event_loop()
+    return loop.run_until_complete(analyze_image_async(img_base64))
+
+async def analyze_images_async(img_base64_list):
+    """Async version with rate limiting"""
+    async with gemini_semaphore:
+        prompt = (
+            "Identify this product with maximum specific detail. "
+            "Provide brand, make, model, full product name, and key technical specifications. "
+            "At the end, clearly list typical search terms, inside double quotes if possible, "
+            "or as bullet points if that's clearer."
+        )
+        contents = [{
+            "parts": [
+                {"text": prompt},
+                *[
                     {
                         "inline_data": {
                             "mime_type": "image/jpeg",
                             "data": img_base64
                         }
                     }
+                    for img_base64 in img_base64_list
                 ]
-            }
-        ]
-    )
-    return response.text
+            ]
+        }]
+        
+        # Add small delay to avoid burst limits
+        await asyncio.sleep(0.1)
+        
+        response = client.models.generate_content(
+            model=model_id,
+            contents=contents,
+            config=config
+        )
+        return response.text
 
 def analyze_images(img_base64_list):
-    prompt = (
-        "Identify this product with maximum specific detail. "
-        "Provide brand, make, model, full product name, and key technical specifications. "
-        "At the end, clearly list typical search terms, inside double quotes if possible, "
-        "or as bullet points if that's clearer."
-    )
-    contents = [{
-        "parts": [
-            {"text": prompt},
-            *[
-                {
-                    "inline_data": {
-                        "mime_type": "image/jpeg",
-                        "data": img_base64
-                    }
-                }
-                for img_base64 in img_base64_list
-            ]
-        ]
-    }]
-    response = client.models.generate_content(
-        model=model_id,
-        contents=contents,
-        config=config
-    )
-    return response.text
+    """Synchronous wrapper - consider migrating to async version"""
+    loop = asyncio.get_event_loop()
+    return loop.run_until_complete(analyze_images_async(img_base64_list))
 
 def extract_search_terms(product_description):
     match = re.search(r'(search terms.*?)[:：]\s*(.*?)$', product_description, re.IGNORECASE | re.DOTALL)
@@ -85,7 +112,8 @@ def extract_search_terms(product_description):
     lines = [line.strip('-*• ').strip() for line in block.splitlines() if line.strip()]
     return lines
 
-def find_shopping_links(product_description: str):
+async def find_shopping_links_async(product_description: str):
+    """Async version with proper rate limiting"""
     search_terms = extract_search_terms(product_description)
     if not search_terms:
         search_terms = [product_description]
@@ -93,29 +121,51 @@ def find_shopping_links(product_description: str):
     search_terms = search_terms[:3]
 
     all_links = set()
-    for term in search_terms:
-        prompt = f"""
+    
+    # Process search terms with rate limiting
+    async def process_search_term(term):
+        async with gemini_semaphore:
+            prompt = f"""
 Find direct product purchase pages for: {term}
 Use Google Search to locate specific product pages where customers can directly buy this exact item. Include only direct product pages with purchase options, official retailer/manufacturer pages, and e-commerce sites selling the specific product. Exclude product manuals or documentation, search results or category pages, review sites without purchase links, and out-of-stock listings. Provide clean URLs only, one per line.
 
 Output format: URL
 """
-        response = client.models.generate_content(
-            model=model_id,
-            contents=prompt,
-            config=config
-        )
-        candidate = response.candidates[0]
-        if (
-            hasattr(candidate, "grounding_metadata")
-            and candidate.grounding_metadata
-            and hasattr(candidate.grounding_metadata, "grounding_chunks")
-            and candidate.grounding_metadata.grounding_chunks
-        ):
-            for chunk in candidate.grounding_metadata.grounding_chunks:
-                if hasattr(chunk, "web"):
-                    all_links.add(chunk.web.uri)
+            # Add delay to prevent burst limits
+            await asyncio.sleep(0.2)
+            
+            response = client.models.generate_content(
+                model=model_id,
+                contents=prompt,
+                config=config
+            )
+            
+            term_links = set()
+            candidate = response.candidates[0]
+            if (
+                hasattr(candidate, "grounding_metadata")
+                and candidate.grounding_metadata
+                and hasattr(candidate.grounding_metadata, "grounding_chunks")
+                and candidate.grounding_metadata.grounding_chunks
+            ):
+                for chunk in candidate.grounding_metadata.grounding_chunks:
+                    if hasattr(chunk, "web"):
+                        term_links.add(chunk.web.uri)
+            return term_links
+    
+    # Process all search terms concurrently but with rate limiting
+    results = await asyncio.gather(*[process_search_term(term) for term in search_terms])
+    
+    # Combine all results
+    for term_links in results:
+        all_links.update(term_links)
+    
     return list(all_links)
+
+def find_shopping_links(product_description: str):
+    """Synchronous wrapper - consider migrating to async version"""
+    loop = asyncio.get_event_loop()
+    return loop.run_until_complete(find_shopping_links_async(product_description))
 
 def extract_shopping_links_urls(response):
     """

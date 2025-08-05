@@ -5,7 +5,7 @@ import re
 from urllib.parse import urlparse, parse_qs
 from app.config import FIRECRAWL_API_KEY
 
-firecrawl_semaphore = asyncio.Semaphore(5)  # Limit concurrent Firecrawl requests
+firecrawl_semaphore = asyncio.Semaphore(10)  # Limit concurrent Firecrawl requests
 
 def is_valid_url(url):
     """
@@ -190,7 +190,7 @@ def is_likely_product_page(url):
 async def call_firecrawl_extractor(links, request_id=None):
     async with firecrawl_semaphore:
         # Limit to the first 10 links
-        limited_links = links[:10]
+        limited_links = links[:6]
 
         # Resolve all links concurrently (parallel)
         resolved_links_raw = await asyncio.gather(*(resolve_vertex_url(link) for link in limited_links))
