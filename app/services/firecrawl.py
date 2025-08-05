@@ -246,9 +246,6 @@ async def call_firecrawl_extractor(links, request_id=None):
             "prompt": (
                 "Extract the product price and the direct product page URL from each input link, and include the website name."
             ),
-            "scrapeOptions": {
-                "maxAge": 604800000
-            },
             "schema": {
                 "type": "object",
                 "properties": {
