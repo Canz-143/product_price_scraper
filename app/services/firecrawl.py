@@ -282,7 +282,7 @@ async def call_firecrawl_extractor(links, request_id=None):
                 if firecrawl_result.get("id"):
                     print(f"[Firecrawl] Got async response, polling for job ID: {firecrawl_result['id']}")
                     firecrawl_id = firecrawl_result["id"]
-                    print(f"[Firecrawl] Waiting 5 seconds before fetching result for id: {firecrawl_id}")
+                    #print(f"[Firecrawl] Waiting 5 seconds before fetching result for id: {firecrawl_id}")
                     await asyncio.sleep(5)
                     
                     get_url = f"https://api.firecrawl.dev/v1/extract/{firecrawl_id}"
@@ -296,11 +296,11 @@ async def call_firecrawl_extractor(links, request_id=None):
                             return {"success": False, "error": "Invalid JSON from Firecrawl"}
                         
                         status = firecrawl_output.get("status") or firecrawl_output.get("data", {}).get("status")
-                        print(f"[Firecrawl] Request {request_id} status: {status}")
+                        #print(f"[Firecrawl] Request {request_id} status: {status}")
                         if status == "completed":
                             break
                         elif status == "processing":
-                            print(f"[Firecrawl] Request {request_id} still processing...")
+                            #print(f"[Firecrawl] Request {request_id} still processing...")
                             await asyncio.sleep(1)
                         else:
                             break
@@ -309,7 +309,7 @@ async def call_firecrawl_extractor(links, request_id=None):
                 
                 # Check if it's a sync response (has data directly)
                 elif firecrawl_result.get("data") or firecrawl_result.get("status") == "completed":
-                    print(f"[Firecrawl] Got synchronous response - data ready immediately")
+                    #print(f"[Firecrawl] Got synchronous response - data ready immediately")
                     return firecrawl_result
                 
                 else:
@@ -334,5 +334,5 @@ async def resolve_vertex_url(url):
                 return next_location or location
             return location or url
         except Exception as e:
-            print(f"[Vertex Redirect] Error resolving {url}: {e}")
+            #print(f"[Vertex Redirect] Error resolving {url}: {e}")
             return url
