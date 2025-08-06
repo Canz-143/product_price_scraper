@@ -130,13 +130,14 @@ Find direct product purchase pages for: {term}
 Use Google Search to locate specific product pages where customers can directly buy this exact item. 
 
 Include only:
-- Direct product pages with purchase options.
-- Sites selling the specific product. 
+- Direct product pages.
 
 Exclude:
-- Product manuals or documentation. 
-- Search results or category pages. 
-- Review sites without purchase links.
+- Product manuals.
+- Documentation. 
+- Search results. 
+- Collection page. 
+- Review sites.
 
 Output format: URL
 """
