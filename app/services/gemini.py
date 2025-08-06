@@ -126,7 +126,7 @@ async def find_shopping_links_async(product_description: str):
     async def process_search_term(term):
         async with gemini_semaphore:
             prompt = f"""
-Search Google for direct product purchase pages of {term}, excluding product manuals, documentation, search results, collection pages, and review sites.
+Search Google for direct product purchase pages of {term}, excluding search results, collection pages, and product documentations.
 
 Output format: URL
 """
