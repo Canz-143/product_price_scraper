@@ -127,7 +127,7 @@ async def find_shopping_links_async(product_description: str):
         async with gemini_semaphore:
             prompt = f"""
 Find direct product purchase pages for: {term}
-Use Google Search to locate specific product pages where customers can directly buy this exact item. 
+Use Google Search to locate specific product pages where customers can directly buy this exact item. If possible, look for merchant sites from the Philippines, but if there's none then use global merchant sites. 
 
 Include only:
 - Direct product pages with purchase option.
