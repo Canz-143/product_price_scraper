@@ -244,7 +244,7 @@ async def call_firecrawl_extractor(links, request_id=None):
         payload = {
             "urls": resolved_links,
             "prompt": (
-                "Extract the product price and the direct product page URL from each input link, and include the website name."
+                "Extract the product price as a combined string (e.g., $2000), the price as a string (e.g., 2000), the currency code (e.g., USD), and include the website name and the direct product page URL."
             ),
             "schema": {
                 "type": "object",
@@ -255,10 +255,12 @@ async def call_firecrawl_extractor(links, request_id=None):
                             "type": "object",
                             "properties": {
                                 "website_name": {"type": "string"},
-                                "price": {"type": "string"},
+                                "price_combined": {"type": "string"},
+                                "price_string": {"type": "string"},
+                                "currency_code": {"type": "string"},
                                 "website_url": {"type": "string"}
                             },
-                            "required": ["website_name", "price", "website_url"]
+                            "required": ["website_name", "price_combined", "price_string", "currency_code", "website_url"]
                         }
                     }
                 },
