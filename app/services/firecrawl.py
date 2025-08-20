@@ -287,7 +287,7 @@ async def call_firecrawl_extractor(links, request_id=None):
                     #print(f"[Firecrawl] Waiting 5 seconds before fetching result for id: {firecrawl_id}")
                     await asyncio.sleep(5)
                     
-                    get_url = f"https://api.firecrawl.dev/v1/extract/{firecrawl_id}"
+                    get_url = f"https://api.firecrawl.dev/v2/extract/{firecrawl_id}"
                     while True:
                         get_response = await client.get(get_url, headers=headers)
                         try:
