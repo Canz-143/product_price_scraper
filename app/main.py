@@ -9,7 +9,11 @@ app.include_router(product.router)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Or specify allowed origins
+    allow_origins=[
+        "http://localhost:5173",
+        "https://xv3.hmr.ph/",
+        "https://xv3.staging.hmr.ph/"
+    ],  # Only allow these origins
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
