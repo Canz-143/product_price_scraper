@@ -236,7 +236,7 @@ async def call_firecrawl_extractor(links, request_id=None):
             print("[Firecrawl] No valid product URLs after filtering")
             return {"success": False, "error": "No valid product URLs after filtering search/collection pages"}
 
-        url = "https://api.firecrawl.dev/v2/extract"
+        url = "https://api.firecrawl.dev/v1/extract"
         headers = {
             "Content-Type": "application/json",
             "Authorization": f"Bearer {FIRECRAWL_API_KEY}"
