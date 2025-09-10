@@ -236,7 +236,7 @@ async def call_firecrawl_extractor(links, request_id=None):
             print("[Firecrawl] No valid product URLs after filtering")
             return {"success": False, "error": "No valid product URLs after filtering search/collection pages"}
 
-        url = "https://api.firecrawl.dev/v2/extract"
+        url = "https://api.firecrawl.dev/v1/extract"
         headers = {
             "Content-Type": "application/json",
             "Authorization": f"Bearer {FIRECRAWL_API_KEY}"
@@ -265,15 +265,6 @@ async def call_firecrawl_extractor(links, request_id=None):
                     }
                 },
                 "required": ["ecommerce_links"]
-            },
-            # Performance optimizations for faster extraction
-            "scrapeOptions": {
-                "maxAge": 604800000,  # Use 1-hour cache for 500% faster results
-                "onlyMainContent": True,  # Skip headers/footers for faster processing
-                "blockAds": True,  # Block ads for faster loading
-                "removeBase64Images": True,  # Remove images for faster processing
-                "skipTlsVerification": True,  # Skip TLS verification for speed
-                "timeout": 30000  # 30 second timeout
             }
         }
 
@@ -296,7 +287,7 @@ async def call_firecrawl_extractor(links, request_id=None):
                     #print(f"[Firecrawl] Waiting 5 seconds before fetching result for id: {firecrawl_id}")
                     await asyncio.sleep(5)
                     
-                    get_url = f"https://api.firecrawl.dev/v2/extract/{firecrawl_id}"
+                    get_url = f"https://api.firecrawl.dev/v1/extract/{firecrawl_id}"
                     while True:
                         get_response = await client.get(get_url, headers=headers)
                         try:
