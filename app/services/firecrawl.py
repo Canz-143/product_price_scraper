@@ -303,7 +303,7 @@ async def call_firecrawl_extractor(links, request_id=None):
                             break
                         elif status == "processing":
                             #print(f"[Firecrawl] Request {request_id} still processing...")
-                            await asyncio.sleep(1)
+                            await asyncio.sleep(3)
                         else:
                             break
                     
