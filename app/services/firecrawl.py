@@ -189,43 +189,49 @@ def is_likely_product_page(url):
 
 async def call_firecrawl_extractor(links, request_id=None):
     async with firecrawl_semaphore:
-        # Limit to the first 5 links
+        # Limit to the first 10 links
         limited_links = links[:5]
 
         # Resolve all links concurrently (parallel)
         resolved_links_raw = await asyncio.gather(*(resolve_vertex_url(link) for link in limited_links))
-
+        
         # Filter out unresolved links, duplicates, and search/collection pages
         resolved_links = []
         filtered_count = 0
-
+        
         for original, resolved in zip(limited_links, resolved_links_raw):
             if not resolved or resolved == original:
                 print(f"[Firecrawl] Skipping unresolved Vertex URL: {original}")
                 continue
-
+            
+            # First check: Valid URL format
             if not is_valid_url(resolved):
                 filtered_count += 1
                 print(f"[Firecrawl] Filtered out invalid URL: {resolved}")
                 continue
-
+            
+            # Check if it's a search or collection page
             if is_search_or_collection_page(resolved):
                 filtered_count += 1
                 print(f"[Firecrawl] Filtered out search/collection page: {resolved}")
                 continue
-
+            
+            # Additional check for product pages (optional, more permissive)
             if not is_likely_product_page(resolved):
+                # Only filter if we're confident it's not a product page
+                # This is more lenient to avoid false positives
                 parsed = urlparse(resolved.lower())
                 if any(indicator in parsed.path for indicator in ['/search', '/category', '/collection', '/browse']):
                     filtered_count += 1
                     print(f"[Firecrawl] Filtered out non-product page: {resolved}")
                     continue
-
+            
             resolved_links.append(resolved)
-
+        
         print(f"[Firecrawl] Filtered out {filtered_count} search/collection pages")
         print(f"[Firecrawl] Final resolved URLs: {resolved_links}")
 
+        # If no valid product URLs remain, return early
         if not resolved_links:
             print("[Firecrawl] No valid product URLs after filtering")
             return {"success": False, "error": "No valid product URLs after filtering search/collection pages"}
@@ -235,8 +241,6 @@ async def call_firecrawl_extractor(links, request_id=None):
             "Content-Type": "application/json",
             "Authorization": f"Bearer {FIRECRAWL_API_KEY}"
         }
-        
-        # Modified Payload with the new structure
         payload = {
             "urls": resolved_links,
             "prompt": (
@@ -245,21 +249,23 @@ async def call_firecrawl_extractor(links, request_id=None):
             "schema": {
                 "type": "object",
                 "properties": {
-                    "product": {
-                        "type": "object",
-                        "properties": {
-                            "combined_price": {"type": "string"},
-                            "price": {"type": "string"},
-                            "currency_code": {"type": "string"},
-                            "website_name": {"type": "string"},
-                            "product_page_url": {"type": "string"}
-                        },
-                        "required": ["combined_price", "price", "currency_code", "website_name", "product_page_url"]
+                    "ecommerce_links": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "website_name": {"type": "string"},
+                                "price_combined": {"type": "string"},
+                                "price_string": {"type": "string"},
+                                "currency_code": {"type": "string"},
+                                "website_url": {"type": "string"}
+                            },
+                            "required": ["website_name", "price_combined", "price_string", "currency_code", "website_url"]
+                        }
                     }
                 },
-                "required": ["product"]
-            },
-            "enableWebSearch": False
+                "required": ["ecommerce_links"]
+            }
         }
 
         async with httpx.AsyncClient(timeout=60.0) as client:
@@ -271,11 +277,16 @@ async def call_firecrawl_extractor(links, request_id=None):
                 print(f"[Firecrawl] Raw response: {response.text}")
                 return {"success": False, "error": "Invalid JSON from Firecrawl"}
 
+            # Handle both sync and async responses
             if firecrawl_result.get("success"):
+                
+                # Check if it's an async response (has job ID)
                 if firecrawl_result.get("id"):
                     print(f"[Firecrawl] Got async response, polling for job ID: {firecrawl_result['id']}")
                     firecrawl_id = firecrawl_result["id"]
+                    #print(f"[Firecrawl] Waiting 5 seconds before fetching result for id: {firecrawl_id}")
                     await asyncio.sleep(5)
+                    
                     get_url = f"https://api.firecrawl.dev/v1/extract/{firecrawl_id}"
                     while True:
                         get_response = await client.get(get_url, headers=headers)
@@ -285,22 +296,28 @@ async def call_firecrawl_extractor(links, request_id=None):
                             print(f"[Firecrawl] Error decoding JSON: {e}")
                             print(f"[Firecrawl] Raw response: {get_response.text}")
                             return {"success": False, "error": "Invalid JSON from Firecrawl"}
-
+                        
                         status = firecrawl_output.get("status") or firecrawl_output.get("data", {}).get("status")
+                        #print(f"[Firecrawl] Request {request_id} status: {status}")
                         if status == "completed":
-                            return firecrawl_output["data"]
+                            break
                         elif status == "processing":
+                            #print(f"[Firecrawl] Request {request_id} still processing...")
                             await asyncio.sleep(3)
                         else:
                             break
+                    
                     return firecrawl_output
+                
+                # Check if it's a sync response (has data directly)
                 elif firecrawl_result.get("data") or firecrawl_result.get("status") == "completed":
-                    # For a synchronous response, the data is ready immediately
-                    # The `data` key now contains the list of extracted results
-                    return firecrawl_result["data"]
+                    #print(f"[Firecrawl] Got synchronous response - data ready immediately")
+                    return firecrawl_result
+                
                 else:
                     print(f"[Firecrawl] Unexpected success response structure: {firecrawl_result}")
                     return {"success": False, "error": "Unexpected response structure from Firecrawl"}
+            
             else:
                 print(f"[Firecrawl] API returned failure: {firecrawl_result}")
                 return firecrawl_result
